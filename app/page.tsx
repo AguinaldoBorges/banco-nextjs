@@ -1,65 +1,160 @@
-import Image from "next/image";
+"use client";
+import { useEffect, useState } from "react";
 
-export default function Home() {
+type HistoryItem = {
+  id: number;
+  type: "deposit" | "withdraw";
+  value: number;
+  created_at: string;
+  formatted?: string;
+};
+
+export default function Page() {
+  const [value, setValue] = useState<number | "">("");
+  const [balance, setBalance] = useState<number>(0);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [formattedHistory, setFormattedHistory] = useState<HistoryItem[]>([]);
+
+  async function fetchBalance() {
+    const r = await fetch("/api/balance");
+    const data = await r.json();
+    setBalance(data.balance ?? 0);
+  }
+
+  async function fetchHistory() {
+    const r = await fetch("/api/history");
+    const data = await r.json();
+    setHistory(data);
+  }
+
+  useEffect(() => {
+    fetchBalance();
+    fetchHistory();
+  }, []);
+
+  // formata datas somente no client (corrige hydration)
+  useEffect(() => {
+    const f = history.map((h) => ({
+      ...h,
+      formatted: new Date(h.created_at).toLocaleString(),
+    }));
+    setFormattedHistory(f);
+  }, [history]);
+
+  async function deposit() {
+    if (!value || value <= 0) return alert("Informe um valor válido.");
+
+    await fetch("/api/deposit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value }),
+    });
+
+    setValue("");
+    fetchBalance();
+    fetchHistory();
+  }
+
+  async function withdraw() {
+    if (!value || value <= 0) return alert("Informe um valor válido.");
+
+    const r = await fetch("/api/withdraw", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value }),
+    });
+
+    if (!r.ok) {
+      const err = await r.json();
+      return alert(err.error);
+    }
+
+    setValue("");
+    fetchBalance();
+    fetchHistory();
+  }
+
+  function translate(type: "deposit" | "withdraw") {
+    return type === "deposit" ? "Depósito" : "Saque";
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="min-h-screen bg-gray-100 p-6 flex justify-center">
+      <div className="w-full max-w-3xl space-y-6">
+        
+        {/* HEADER */}
+        <header className="bg-white rounded-2xl shadow p-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold">Banco Next.js</h1>
+            <p className="text-sm text-gray-500">Seu novo banco digital</p>
+          </div>
+
+          <div className="text-right">
+            <div className="text-sm text-gray-500">Saldo Atual</div>
+            <div className="text-2xl font-semibold text-green-600">
+              R$ {balance.toFixed(2)}
+            </div>
+          </div>
+        </header>
+
+        {/* AÇÕES */}
+        <section className="bg-white rounded-2xl shadow p-6 flex gap-4 items-center">
+          <input
+            type="number"
+            placeholder="Valor"
+            value={value}
+            onChange={(e) =>
+              setValue(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            className="flex-1 border border-gray-300 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+          />
+
+          <button
+            onClick={deposit}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Depositar
+          </button>
+
+          <button
+            onClick={withdraw}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-xl"
           >
-            Documentation
-          </a>
-        </div>
-      </main>
+            Sacar
+          </button>
+        </section>
+
+        {/* HISTÓRICO */}
+        <section className="bg-white rounded-2xl shadow p-6">
+          <h2 className="text-lg font-semibold mb-4">Histórico</h2>
+
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {formattedHistory.length === 0 && (
+              <p className="text-gray-500 text-sm">Nenhuma transação registrada</p>
+            )}
+
+            {formattedHistory.map((h) => (
+              <div
+                key={h.id}
+                className={`p-3 rounded-xl border flex justify-between items-center ${
+                  h.type === "deposit"
+                    ? "bg-green-50 border-green-200"
+                    : "bg-red-50 border-red-200"
+                }`}
+              >
+                <div>
+                  <div className="font-medium">{translate(h.type)}</div>
+                  <div className="text-xs text-gray-600">{h.formatted}</div>
+                </div>
+
+                <div className="font-semibold">
+                  R$ {Number(h.value).toFixed(2)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
