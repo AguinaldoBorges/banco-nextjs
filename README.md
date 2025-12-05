@@ -3,6 +3,8 @@
 
 Projeto em **Next.js + TypeScript + SQLite** — interface simples para depósito, saque, histórico de transações e consulta de saldo.
 
+!["projeto"](projeto.png)
+
 ---
 
 ## Funcionalidades
